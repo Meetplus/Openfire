@@ -19,6 +19,7 @@ package org.jivesoftware.openfire;
 import com.google.common.reflect.ClassPath;
 import com.google.common.util.concurrent.SimpleTimeLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.firebase.FirebaseApp;
 import org.apache.logging.log4j.LogManager;
 import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.database.JNDIDataSourceProvider;
@@ -127,11 +128,12 @@ public class XMPPServer {
     private boolean initialized = false;
     private boolean started = false;
     private NodeID nodeID;
-    private static final NodeID DEFAULT_NODE_ID = NodeID.getInstance( UUID.randomUUID().toString().getBytes() );
+    private static final NodeID DEFAULT_NODE_ID = NodeID.getInstance(UUID.randomUUID().toString().getBytes());
 
     private Timer terminatorTimer;
     public static final String EXIT = "exit";
     private final static Set<String> XML_ONLY_PROPERTIES;
+
     static {
         final List<String> properties = new ArrayList<>(Arrays.asList(
             // Admin console network settings
@@ -179,9 +181,9 @@ public class XMPPServer {
     private boolean setupMode = true;
 
     private static final String STARTER_CLASSNAME =
-            "org.jivesoftware.openfire.starter.ServerStarter";
+        "org.jivesoftware.openfire.starter.ServerStarter";
     private static final String WRAPPER_CLASSNAME =
-            "org.tanukisoftware.wrapper.WrapperManager";
+        "org.tanukisoftware.wrapper.WrapperManager";
     private boolean shuttingDown;
     private XMPPServerInfoImpl xmppServerInfo;
 
@@ -213,6 +215,10 @@ public class XMPPServer {
         if (instance != null) {
             throw new IllegalStateException("A server is already running");
         }
+
+        // Initialise firebase admin
+        FirebaseApp.initializeApp();
+
         instance = this;
         start();
     }
@@ -237,9 +243,8 @@ public class XMPPServer {
      * @param jid the JID to check.
      * @return true if the address is a local address to this server.
      */
-    public boolean isLocal( JID jid )
-    {
-        return jid != null && jid.getDomain().equals( xmppServerInfo.getXMPPDomain() );
+    public boolean isLocal(JID jid) {
+        return jid != null && jid.getDomain().equals(xmppServerInfo.getXMPPDomain());
     }
 
     /**
@@ -248,13 +253,12 @@ public class XMPPServer {
      *
      * @param jid the JID to check.
      * @return true if the given address does not match the local server hostname and does not
-     *         match a component service JID.
+     * match a component service JID.
      */
-    public boolean isRemote( JID jid )
-    {
+    public boolean isRemote(JID jid) {
         return jid != null
-                && !jid.getDomain().equals( xmppServerInfo.getXMPPDomain() )
-                && !componentManager.hasComponent( new JID(null, jid.getDomain(), null, true) );
+            && !jid.getDomain().equals(xmppServerInfo.getXMPPDomain())
+            && !componentManager.hasComponent(new JID(null, jid.getDomain(), null, true));
     }
 
     /**
@@ -296,11 +300,10 @@ public class XMPPServer {
      * @param jid the JID to check.
      * @return true if the given address matches a component service JID.
      */
-    public boolean matchesComponent( JID jid )
-    {
+    public boolean matchesComponent(JID jid) {
         return jid != null
-                && !jid.getDomain().equals( xmppServerInfo.getXMPPDomain() )
-                && componentManager.hasComponent( new JID(null, jid.getDomain(), null, true) );
+            && !jid.getDomain().equals(xmppServerInfo.getXMPPDomain())
+            && componentManager.hasComponent(new JID(null, jid.getDomain(), null, true));
     }
 
     /**
@@ -318,8 +321,8 @@ public class XMPPServer {
      * Creates an XMPPAddress local to this server. The construction of the new JID
      * can be optimized by skipping stringprep operations.
      *
-     * @param username the user name portion of the id or null to indicate none is needed.
-     * @param resource the resource portion of the id or null to indicate none is needed.
+     * @param username       the user name portion of the id or null to indicate none is needed.
+     * @param resource       the resource portion of the id or null to indicate none is needed.
      * @param skipStringprep true if stringprep should not be applied.
      * @return an XMPPAddress for the server.
      */
@@ -444,22 +447,19 @@ public class XMPPServer {
             try {
                 minConnections = Integer.parseInt(
                     JiveGlobals.getXMLProperty("autosetup.database.defaultProvider.minConnections"));
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 minConnections = 5;
             }
             try {
                 maxConnections = Integer.parseInt(
                     JiveGlobals.getXMLProperty("autosetup.database.defaultProvider.maxConnections"));
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 maxConnections = 25;
             }
             try {
                 connectionTimeout = Double.parseDouble(
                     JiveGlobals.getXMLProperty("autosetup.database.defaultProvider.connectionTimeout"));
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 connectionTimeout = 1.0;
             }
 
@@ -472,7 +472,7 @@ public class XMPPServer {
         }
 
         // mark setup as done, so that other things can be written to the DB
-        JiveGlobals.setXMLProperty("setup","true");
+        JiveGlobals.setXMLProperty("setup", "true");
 
         // steps from index.jsp
         String localeCode = JiveGlobals.getXMLProperty("autosetup.locale");
@@ -530,22 +530,22 @@ public class XMPPServer {
         // Import any provisioned users.
         try {
             RosterItemProvider rosterItemProvider = null;
-            for (int userId = 1; userId < Integer.MAX_VALUE; userId++ ) {
-                final String username = JiveGlobals.getXMLProperty( "autosetup.users.user" + userId + ".username" );
-                final String password = JiveGlobals.getXMLProperty( "autosetup.users.user" + userId + ".password" );
+            for (int userId = 1; userId < Integer.MAX_VALUE; userId++) {
+                final String username = JiveGlobals.getXMLProperty("autosetup.users.user" + userId + ".username");
+                final String password = JiveGlobals.getXMLProperty("autosetup.users.user" + userId + ".password");
                 if (username == null || password == null) {
                     break;
                 }
-                final String name = JiveGlobals.getXMLProperty( "autosetup.users.user" + userId + ".name" );
-                final String email = JiveGlobals.getXMLProperty( "autosetup.users.user" + userId + ".email" );
+                final String name = JiveGlobals.getXMLProperty("autosetup.users.user" + userId + ".name");
+                final String email = JiveGlobals.getXMLProperty("autosetup.users.user" + userId + ".email");
 
-                final User user = UserManager.getInstance().createUser(username, password, name, email );
+                final User user = UserManager.getInstance().createUser(username, password, name, email);
                 for (int itemId = 1; itemId < Integer.MAX_VALUE; itemId++) {
-                    final String jid = JiveGlobals.getXMLProperty( "autosetup.users.user" + userId + ".roster.item" + itemId + ".jid" );
+                    final String jid = JiveGlobals.getXMLProperty("autosetup.users.user" + userId + ".roster.item" + itemId + ".jid");
                     if (jid == null) {
                         break;
                     }
-                    final String nickname = JiveGlobals.getXMLProperty( "autosetup.users.user" + userId + ".roster.item" + itemId + ".nickname" );
+                    final String nickname = JiveGlobals.getXMLProperty("autosetup.users.user" + userId + ".roster.item" + itemId + ".nickname");
                     final RosterItem rosterItem = new RosterItem(new JID(jid), RosterItem.SubType.BOTH, RosterItem.AskType.NONE, RosterItem.RecvType.NONE, nickname, null);
 
                     if (rosterItemProvider == null) {
@@ -579,16 +579,15 @@ public class XMPPServer {
         CertificateStoreManager certificateStoreManager = null; // Will be a module after finishing setup.
         try {
             certificateStoreManager = new CertificateStoreManager();
-            certificateStoreManager.initialize( this );
+            certificateStoreManager.initialize(this);
             certificateStoreManager.start();
-            final IdentityStore identityStore = certificateStoreManager.getIdentityStore( ConnectionType.SOCKET_C2S );
+            final IdentityStore identityStore = certificateStoreManager.getIdentityStore(ConnectionType.SOCKET_C2S);
             identityStore.ensureDomainCertificate();
 
         } catch (Exception e) {
             logger.error("Error generating self-signed certificates", e);
         } finally {
-            if (certificateStoreManager != null)
-            {
+            if (certificateStoreManager != null) {
                 certificateStoreManager.stop();
                 certificateStoreManager.destroy();
             }
@@ -622,7 +621,7 @@ public class XMPPServer {
                         if (isStandAlone()) {
                             // Always restart the HTTP server manager. This covers the case
                             // of changing the ports, as well as generating self-signed certificates.
-                        
+
                             // Wait a short period before shutting down the admin console.
                             // Otherwise, the page that requested the setup finish won't
                             // render properly!
@@ -639,8 +638,7 @@ public class XMPPServer {
                         // Start all the modules
                         startModules();
                         scanForSystemPropertyClasses();
-                    }
-                    catch (Exception e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                         logger.error(e.getMessage(), e);
                         shutdownServer();
@@ -682,12 +680,12 @@ public class XMPPServer {
 
             // Log that the server has been started
             String startupBanner = LocaleUtils.getLocalizedString("short.title") + " " + xmppServerInfo.getVersion().getVersionString() +
-                    " [" + JiveGlobals.formatDateTime(new Date()) + "]";
+                " [" + JiveGlobals.formatDateTime(new Date()) + "]";
             logger.info(startupBanner);
             System.out.println(startupBanner);
 
             started = true;
-            
+
             // Notify server listeners that the server has been started
             for (XMPPServerListener listener : listeners) {
                 try {
@@ -700,8 +698,7 @@ public class XMPPServer {
             if (!setupMode) {
                 scanForSystemPropertyClasses();
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             logger.error(e.getMessage(), e);
             System.out.println(LocaleUtils.getLocalizedString("startup.error"));
@@ -820,8 +817,7 @@ public class XMPPServer {
             Class<Module> modClass = (Class<Module>) loader.loadClass(module);
             Module mod = modClass.newInstance();
             this.modules.put(modClass, mod);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             logger.error(LocaleUtils.getLocalizedString("admin.error"), e);
         }
@@ -831,8 +827,7 @@ public class XMPPServer {
         for (Module module : modules.values()) {
             try {
                 module.initialize(this);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 // Remove the failed initialized module
                 this.modules.remove(module.getClass());
@@ -843,32 +838,31 @@ public class XMPPServer {
         }
 
         // Register modules with service discovery provides where applicable.
-        for (Module module : modules.values() )
-        {
+        for (Module module : modules.values()) {
             // Service discovery info
             if (module instanceof ServerFeaturesProvider) {
-                getIQDiscoInfoHandler().addServerFeaturesProvider( (ServerFeaturesProvider) module );
+                getIQDiscoInfoHandler().addServerFeaturesProvider((ServerFeaturesProvider) module);
             }
 
             if (module instanceof ServerIdentitiesProvider) {
-                getIQDiscoInfoHandler().addServerIdentitiesProvider( (ServerIdentitiesProvider) module );
+                getIQDiscoInfoHandler().addServerIdentitiesProvider((ServerIdentitiesProvider) module);
             }
 
             if (module instanceof UserIdentitiesProvider) {
-                getIQDiscoInfoHandler().addUserIdentitiesProvider( (UserIdentitiesProvider) module );
+                getIQDiscoInfoHandler().addUserIdentitiesProvider((UserIdentitiesProvider) module);
             }
 
-            if (module instanceof UserFeaturesProvider ) {
-                getIQDiscoInfoHandler().addUserFeaturesProvider( (UserFeaturesProvider) module );
+            if (module instanceof UserFeaturesProvider) {
+                getIQDiscoInfoHandler().addUserFeaturesProvider((UserFeaturesProvider) module);
             }
 
             // Service discovery items
             if (module instanceof ServerItemsProvider) {
-                getIQDiscoItemsHandler().addServerItemsProvider( (ServerItemsProvider) module );
+                getIQDiscoItemsHandler().addServerItemsProvider((ServerItemsProvider) module);
             }
 
             if (module instanceof UserItemsProvider) {
-                getIQDiscoItemsHandler().addUserItemsProvider( (UserItemsProvider) module);
+                getIQDiscoItemsHandler().addUserItemsProvider((UserItemsProvider) module);
             }
         }
 
@@ -882,11 +876,10 @@ public class XMPPServer {
     private void startModules() {
         for (Module module : modules.values()) {
             try {
-                logger.debug( "Starting module: " + module.getName() );
+                logger.debug("Starting module: " + module.getName());
                 module.start();
-            }
-            catch (Exception e) {
-                logger.error( "An exception occurred while starting module '{}'.", module.getName(), e );
+            } catch (Exception e) {
+                logger.error("An exception occurred while starting module '{}'.", module.getName(), e);
             }
         }
     }
@@ -899,10 +892,9 @@ public class XMPPServer {
         if (isStandAlone() && isRestartable()) {
             try {
                 Class<?> wrapperClass = Class.forName(WRAPPER_CLASSNAME);
-                Method restartMethod = wrapperClass.getMethod("restart", (Class []) null);
-                restartMethod.invoke(null, (Object []) null);
-            }
-            catch (Exception e) {
+                Method restartMethod = wrapperClass.getMethod("restart", (Class[]) null);
+                restartMethod.invoke(null, (Object[]) null);
+            } catch (Exception e) {
                 logger.error("Could not restart container", e);
             }
         }
@@ -951,19 +943,16 @@ public class XMPPServer {
                     Class<?> wrapperClass = Class.forName(WRAPPER_CLASSNAME);
                     Method stopMethod = wrapperClass.getMethod("stop", Integer.TYPE);
                     stopMethod.invoke(null, 0);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     logger.error("Could not stop container", e);
                 }
-            }
-            else {
+            } else {
                 shutdownServer();
                 Thread shutdownThread = new ShutdownThread();
                 shutdownThread.setDaemon(true);
                 shutdownThread.start();
             }
-        }
-        else {
+        } else {
             // Close listening socket no matter what the condition is in order to be able
             // to be restartable inside a container.
             shutdownServer();
@@ -978,8 +967,7 @@ public class XMPPServer {
         boolean restartable;
         try {
             restartable = Class.forName(WRAPPER_CLASSNAME) != null;
-        }
-        catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException e) {
             restartable = false;
         }
         return restartable;
@@ -996,8 +984,7 @@ public class XMPPServer {
         boolean standalone;
         try {
             standalone = Class.forName(STARTER_CLASSNAME) != null;
-        }
-        catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException e) {
             standalone = false;
         }
         return standalone;
@@ -1015,15 +1002,13 @@ public class XMPPServer {
             pstmt = con.prepareStatement("SELECT count(*) FROM ofID");
             rs = pstmt.executeQuery();
             rs.next();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.err.println("Database setup or configuration error: " +
-                    "Please verify your database settings and check the " +
-                    "logs/openfire.log file for detailed error messages.");
+                "Please verify your database settings and check the " +
+                "logs/openfire.log file for detailed error messages.");
             logger.error("Database could not be accessed", e);
             throw new IllegalArgumentException(e);
-        }
-        finally {
+        } finally {
             DbConnectionManager.closeConnection(rs, pstmt, con);
         }
     }
@@ -1033,10 +1018,10 @@ public class XMPPServer {
      * We do the verification by checking for the Openfire config file in
      * the config dir of jiveHome.
      *
-     * @param homeGuess a guess at the path to the home directory.
+     * @param homeGuess      a guess at the path to the home directory.
      * @param jiveConfigName the name of the config file to check.
      * @return a file pointing to the home directory or null if the
-     *         home directory guess was wrong.
+     * home directory guess was wrong.
      * @throws java.io.FileNotFoundException if there was a problem with the home
      *                                       directory provided
      */
@@ -1045,12 +1030,10 @@ public class XMPPServer {
         File configFile = new File(openfireHome, jiveConfigName);
         if (!configFile.exists()) {
             throw new FileNotFoundException();
-        }
-        else {
+        } else {
             try {
                 return new File(openfireHome.getCanonicalPath());
-            }
-            catch (Exception ex) {
+            } catch (Exception ex) {
                 throw new FileNotFoundException();
             }
         }
@@ -1070,8 +1053,7 @@ public class XMPPServer {
                 if (homeProperty != null) {
                     openfireHome = verifyHome(homeProperty, jiveConfigName);
                 }
-            }
-            catch (FileNotFoundException fe) {
+            } catch (FileNotFoundException fe) {
                 // Ignore.
             }
         }
@@ -1098,13 +1080,11 @@ public class XMPPServer {
                         if (path != null) {
                             openfireHome = verifyHome(path, jiveConfigName);
                         }
-                    }
-                    catch (FileNotFoundException fe) {
+                    } catch (FileNotFoundException fe) {
                         fe.printStackTrace();
                     }
                 }
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 System.err.println("Error loading openfire_init.xml to find home.");
                 e.printStackTrace();
                 if (e instanceof InterruptedException) {
@@ -1116,8 +1096,7 @@ public class XMPPServer {
         if (openfireHome == null) {
             System.err.println("Could not locate home");
             throw new FileNotFoundException();
-        }
-        else {
+        } else {
             // Set the home directory for the config file
             JiveGlobals.setHomeDirectory(openfireHome.toString());
             // Set the name of the config file
@@ -1127,15 +1106,16 @@ public class XMPPServer {
 
     /**
      * This timer task is used to monitor the System input stream
-     * for a "terminate" command from the launcher (or the console). 
-     * This allows for a graceful shutdown when Openfire is started 
+     * for a "terminate" command from the launcher (or the console).
+     * This allows for a graceful shutdown when Openfire is started
      * via the launcher, especially in Windows.
      */
     private class Terminator extends TimerTask {
         private BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
+
         @Override
         public void run() {
-            try { 
+            try {
                 if (stdin.ready()) {
                     if (EXIT.equalsIgnoreCase(stdin.readLine())) {
                         System.exit(0); // invokes shutdown hook(s)
@@ -1146,7 +1126,7 @@ public class XMPPServer {
             }
         }
     }
-    
+
     /**
      * <p>A thread to ensure the server shuts down no matter what.</p>
      * <p>Spawned when stop() is called in standalone mode, we wait a few
@@ -1184,10 +1164,9 @@ public class XMPPServer {
             try {
                 Thread.sleep(5000);
                 // No matter what, we make sure it's dead
-                System.out.println( "Openfire process forcefully killed." );
+                System.out.println("Openfire process forcefully killed.");
                 System.exit(0);
-            }
-            catch (InterruptedException e) {
+            } catch (InterruptedException e) {
                 // Ignore.
             }
 
@@ -1230,27 +1209,27 @@ public class XMPPServer {
 
         logger.info("Shutting down " + modules.size() + " modules ...");
 
-        final SimpleTimeLimiter timeLimiter = SimpleTimeLimiter.create( Executors.newSingleThreadExecutor(
+        final SimpleTimeLimiter timeLimiter = SimpleTimeLimiter.create(Executors.newSingleThreadExecutor(
             new ThreadFactoryBuilder()
-                .setDaemon( true )
-                .setNameFormat( "shutdown-thread-%d" )
-                .build() ) );
+                .setDaemon(true)
+                .setNameFormat("shutdown-thread-%d")
+                .build()));
 
         // OF-1996" Get all modules and stop and destroy them. Do this in the reverse order in which the were created.
         // This ensures that the 'most important' / core modules are shut down last, giving other modules the
         // opportunity to make use of their functionality during their shutdown (eg: MUC wants to send messages during
         // shutdown).
-        final List<Class> reverseInsertionOrder = new ArrayList<>( modules.keySet() );
-        Collections.reverse( reverseInsertionOrder );
+        final List<Class> reverseInsertionOrder = new ArrayList<>(modules.keySet());
+        Collections.reverse(reverseInsertionOrder);
 
-        for( final Class moduleClass : reverseInsertionOrder ) {
-            final Module module = modules.get( moduleClass );
+        for (final Class moduleClass : reverseInsertionOrder) {
+            final Module module = modules.get(moduleClass);
             try {
                 // OF-1607: Apply a configurable timeout to the duration of stop/destroy invocation.
                 timeLimiter.runWithTimeout(() -> {
                     stopAndDestroyModule(module);
                 }, JiveGlobals.getLongProperty("shutdown.modules.timeout-millis", Long.MAX_VALUE), TimeUnit.MILLISECONDS);
-            } catch ( Exception e ) {
+            } catch (Exception e) {
                 logger.warn("An exception occurred while stopping / destroying module '{}'.", module.getName(), e);
                 System.err.println(e);
             }
@@ -1258,7 +1237,7 @@ public class XMPPServer {
 
         modules.clear();
         // Stop the Db connection manager.
-        try {	
+        try {
             DbConnectionManager.destroyConnectionProvider();
         } catch (Exception ex) {
             logger.error("Exception during DB shutdown", ex);
@@ -1279,9 +1258,9 @@ public class XMPPServer {
      *
      * @param module The module to be stopped (cannot be null).
      */
-    private static void stopAndDestroyModule( final Module module ) {
+    private static void stopAndDestroyModule(final Module module) {
         try {
-            logger.debug("Stopping and shutting down module '{}'", module.getName() );
+            logger.debug("Stopping and shutting down module '{}'", module.getName());
             module.stop();
             module.destroy();
         } catch (Exception ex) {
@@ -1689,6 +1668,7 @@ public class XMPPServer {
      * Returns the <code>VCardManager</code> registered with this server. The
      * <code>VCardManager</code> was registered with the server as a module while starting up
      * the server.
+     *
      * @return the <code>VCardManager</code> registered with this server.
      */
     public VCardManager getVCardManager() {
@@ -1714,8 +1694,9 @@ public class XMPPServer {
      * @return the <code>CertificateStoreManager</code> registered with this server.
      */
     public CertificateStoreManager getCertificateStoreManager() {
-        return (CertificateStoreManager) modules.get( CertificateStoreManager.class );
+        return (CertificateStoreManager) modules.get(CertificateStoreManager.class);
     }
+
     /**
      * Returns the locator to use to find sessions hosted in other cluster nodes. When not running
      * in a cluster a {@code null} value is returned.
@@ -1738,7 +1719,7 @@ public class XMPPServer {
 
     /**
      * Returns whether or not the server has been started.
-     * 
+     *
      * @return whether or not the server has been started.
      */
     public boolean isStarted() {

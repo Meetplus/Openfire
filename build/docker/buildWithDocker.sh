@@ -2,7 +2,7 @@ SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 OFROOT=$(realpath "$SCRIPTPATH/../../")
 DOMAPMAVEN=true
 CREATEMAVEN=false
-SKIPTESTS=false
+SKIPTESTS=true
 
 usage()
 {

@@ -3,7 +3,8 @@ FROM openjdk:11-jre
 ENV OPENFIRE_USER=openfire \
     OPENFIRE_DIR=/usr/local/openfire \
     OPENFIRE_DATA_DIR=/var/lib/openfire \
-    OPENFIRE_LOG_DIR=/var/log/openfire
+    OPENFIRE_LOG_DIR=/var/log/openfire \
+    GOOGLE_APPLICATION_CREDENTIALS=/usr/local/openfire/meetplus-firebase-adminsdk.json
 
 RUN apt-get update -qq \
     && apt-get install -yqq sudo \
@@ -23,4 +24,7 @@ WORKDIR /usr/local/openfire
 
 EXPOSE 3478 3479 5005 5222 5223 5229 5262 5263 5275 5276 7070 7443 7777 9090 9091
 VOLUME ["${OPENFIRE_DATA_DIR}"]
+
+COPY meetplus-firebase-adminsdk.json /usr/local/openfire/meetplus-firebase-adminsdk.json
+
 ENTRYPOINT [ "/sbin/entrypoint.sh" ]
