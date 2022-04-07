@@ -28,7 +28,7 @@ class FirebaseAuthProvider implements AuthProvider {
 
             FirebaseToken token = FirebaseAuth.getInstance().verifyIdToken(password);
             String uid = token.getUid();
-            if (!uid.toLowerCase().equals(username)) {
+            if (!uid.equals(username)) {
                 Log.info("username and uid doesn't match");
                 throw new UnauthorizedException();
             }
