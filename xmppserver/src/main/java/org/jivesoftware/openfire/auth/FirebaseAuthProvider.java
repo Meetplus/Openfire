@@ -28,7 +28,7 @@ class FirebaseAuthProvider implements AuthProvider {
 
             FirebaseToken token = FirebaseAuth.getInstance().verifyIdToken(password);
             String uid = token.getUid();
-            if (!uid.equals(username)) {
+            if (!uid.equalsIgnoreCase(username)) {
                 Log.info("username and uid doesn't match");
                 throw new UnauthorizedException();
             }
@@ -92,14 +92,12 @@ class FirebaseAuthProvider implements AuthProvider {
         UserManager userManager = UserManager.getInstance();
         try {
             userManager.getUser(username);
-        }
-        catch (UserNotFoundException unfe) {
+        } catch (UserNotFoundException unfe) {
             try {
                 Log.debug("FirebaseAuthProvider: Automatically creating new user account for " + username);
                 UserManager.getUserProvider().createUser(username, StringUtils.randomString(8),
                     null, null);
-            }
-            catch (UserAlreadyExistsException uaee) {
+            } catch (UserAlreadyExistsException uaee) {
                 // Ignore.
             }
         }
