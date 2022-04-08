@@ -96,7 +96,7 @@ class FirebaseAuthProvider implements AuthProvider {
             try {
                 Log.debug("FirebaseAuthProvider: Automatically creating new user account for " + username);
                 UserManager.getUserProvider().createUser(username, StringUtils.randomString(8),
-                    null, null);
+                    username, null);
             } catch (UserAlreadyExistsException uaee) {
                 // Ignore.
             }
