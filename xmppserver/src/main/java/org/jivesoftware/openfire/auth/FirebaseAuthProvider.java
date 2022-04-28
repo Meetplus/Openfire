@@ -32,7 +32,7 @@ class FirebaseAuthProvider implements AuthProvider {
                 Log.info("username and uid doesn't match");
                 throw new UnauthorizedException();
             }
-            createUser(username);
+            createUser(username.toLowerCase());
 
             Log.info("Authentication successful");
         } catch (FirebaseAuthException e) {
